@@ -1,7 +1,6 @@
 <template>
     <div class="container">
         <div class="row">
-
             <!-- list of rooms -->
             <div class="col-md-3 bg-light sidebar" v-if="showRoomForm == false">
                 <div
@@ -63,29 +62,70 @@
             <!-- message container  -->
             <div
                 class="col-md-9"
-                style="display:flex;justify-content: space-between;flex-direction: column; height: 70vh;"
+                style="
+                    display: flex;
+                    justify-content: space-between;
+                    flex-direction: column;
+                    height: 70vh;
+                "
                 v-if="showMessages == true"
             >
-                <div class="chat-container p-3 bg-white" 
-                    style="height: 60vh;overflow-y: scroll;padding-bottom: 10px;"
-                    @scroll="handleScroll">
+                <div
+                    class="chat-container p-3 bg-white"
+                    style="
+                        height: 60vh;
+                        overflow-y: scroll;
+                        padding-bottom: 10px;
+                    "
+                    @scroll="handleScroll"
+                >
                     <div
                         class="chat-message"
                         v-for="message in messages"
                         :key="message.id"
-                        style="padding-bottom: 4px"
+                        style="padding-bottom: 4px; display: flex"
                     >
-                        <span style="font-size: 12px; margin-right: 12px">{{
-                            message.user.name
-                        }}</span>
-                        {{ message.content }}
+                        <div
+                            style="
+                                margin-right: 12px;
+                                height: 30px;
+                                width: 30px;
+                                background-color: grey;
+                                display: inline-block;
+                                border-radius: 99px;
+                                text-align: center;
+                                padding: 2px;
+                            "
+                        >
+                            {{ message.user.name.charAt(0) }}
+                        </div>
+                        <div
+                            style="
+                                background-color: #d9fdd3;
+                                color: black;
+                                font-weight: bold;
+                                padding: 4px;
+                                border-radius: 4px;
+                            "
+                        >
+                            {{ message.content }}
+                            <span
+                                style="
+                                    color: gray;
+                                    font-weight: bold;
+                                    font-size: 8px;
+                                    margin-top: 10px;
+                                "
+                                >{{ fetchTime(message.created_at) }}</span
+                            >
+                        </div>
                     </div>
-                    <div style="height: 2vh;"></div>
+                    <div style="height: 2vh"></div>
                 </div>
                 <form
                     @submit.prevent="sendMessage"
                     class="mt-3"
-                    style="height: 10vh;"
+                    style="height: 10vh"
                 >
                     <div class="input-group">
                         <input
@@ -102,7 +142,6 @@
                     </div>
                 </form>
             </div>
-            
         </div>
     </div>
 </template>
@@ -124,15 +163,15 @@ export default {
         const room = ref("");
         let showRoomForm = ref(false);
         let showMessages = ref(false);
-        let page = ref(1)
-        let previousScrollHeightMinusScrollTop = ref(null)
+        let page = ref(1);
+        let previousScrollHeightMinusScrollTop = ref(null);
 
         const fetchRooms = async () => {
             try {
                 const response = await axios.get("/api/rooms", {
                     headers: {
-                      'Authorization': `Bearer ${store.getters.getToken}`
-                    }
+                        Authorization: `Bearer ${store.getters.getToken}`,
+                    },
                 });
                 rooms.value = response.data.data;
             } catch (error) {
@@ -165,7 +204,7 @@ export default {
                 const response = await axios.post("/api/messages", message);
                 if (response.data.success) {
                     messages.value = [...messages.value, response.data.data];
-                     scrollToBottom()
+                    scrollToBottom();
                 }
             } catch (error) {
                 console.error("Error fetching employees:", error);
@@ -174,51 +213,57 @@ export default {
             message.content = "";
         };
 
-        
         async function showMessageList(room_id) {
-            roomId.value = room_id
+            roomId.value = room_id;
             message.room_id = room_id;
-            if(page.value > 1) recordScrollPosition()
+            if (page.value > 1) recordScrollPosition();
             try {
-                const response = await axios.get(`/api/messages/${room_id}?page=${page.value}`, {
-                    headers: {
-                      'Authorization': `Bearer ${store.getters.getToken}`
+                const response = await axios.get(
+                    `/api/messages/${room_id}?page=${page.value}`,
+                    {
+                        headers: {
+                            Authorization: `Bearer ${store.getters.getToken}`,
+                        },
                     }
-                });
-                console.log("response", response.data.data)
-                messages.value = [...reverse(response.data.data),...messages.value];
+                );
+                console.log("response", response.data.data);
+                messages.value = [
+                    ...reverse(response.data.data),
+                    ...messages.value,
+                ];
                 toggleShowMessages();
                 await nextTick();
-                if(page.value == 1) scrollToBottom();
-                else restoreScrollPosition()
-               page.value += 1;
+                if (page.value == 1) scrollToBottom();
+                else restoreScrollPosition();
+                page.value += 1;
             } catch (error) {
                 console.error("Error fetching employees:", error);
             }
         }
 
         function recordScrollPosition() {
-          let node = document.querySelector('.chat-container');
-          previousScrollHeightMinusScrollTop.value =
-          node.scrollHeight - node.scrollTop;
-    }
+            let node = document.querySelector(".chat-container");
+            previousScrollHeightMinusScrollTop.value =
+                node.scrollHeight - node.scrollTop;
+        }
 
-    function restoreScrollPosition() {
-      let node = document.querySelector('.chat-container');
-      node.scrollTop =
-        node.scrollHeight - previousScrollHeightMinusScrollTop.value;
-    }
+        function restoreScrollPosition() {
+            let node = document.querySelector(".chat-container");
+            node.scrollTop =
+                node.scrollHeight - previousScrollHeightMinusScrollTop.value;
+        }
 
         const handleScroll = async () => {
-            const chatContainer = document.querySelector('.chat-container');
-            if (chatContainer.scrollTop === 0 ) {
+            const chatContainer = document.querySelector(".chat-container");
+            if (chatContainer.scrollTop === 0) {
                 await showMessageList(roomId.value);
             }
         };
 
         const scrollToBottom = () => {
-               const chatContainer = document.querySelector('.chat-container');
-              if(chatContainer)  chatContainer.scrollTop = chatContainer.scrollHeight;
+            const chatContainer = document.querySelector(".chat-container");
+            if (chatContainer)
+                chatContainer.scrollTop = chatContainer.scrollHeight;
         };
 
         onMounted(() => {
@@ -227,6 +272,32 @@ export default {
                 messages.value = [...messages.value, event.message];
             });
         });
+
+        const fetchTime = (date) => {
+            const isoString = date;
+            const dateObject = new Date(isoString);
+
+            const IST_OFFSET_HOURS = 5;
+            const IST_OFFSET_MINUTES = 30;
+
+            const utcMilliseconds = dateObject.getTime();
+
+            const istMilliseconds =
+                utcMilliseconds +
+                IST_OFFSET_HOURS * 60 * 60 * 1000 +
+                IST_OFFSET_MINUTES * 60 * 1000;
+
+            const istDateObject = new Date(istMilliseconds);
+
+            const hours = String(istDateObject.getUTCHours()).padStart(2, "0");
+            const minutes = String(istDateObject.getUTCMinutes()).padStart(
+                2,
+                "0"
+            );
+
+            const formattedTime = `${hours}:${minutes}`;
+            return formattedTime;
+        };
 
         return {
             rooms,
@@ -239,7 +310,8 @@ export default {
             messages,
             message,
             sendMessage,
-            handleScroll
+            handleScroll,
+            fetchTime,
         };
     },
 };
