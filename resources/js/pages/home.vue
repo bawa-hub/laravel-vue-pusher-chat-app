@@ -152,6 +152,7 @@
                                 class="btn btn-primary"
                                 type="button"
                                 @click="triggerFileInput"
+                                style="margin-left: 3px; margin-right: 3px"
                             >
                                 Attach File
                             </button>
@@ -260,8 +261,6 @@ export default {
         };
 
         async function showMessageList(room_id) {
-            console.log("roomId", roomId.value);
-            console.log("room_id", room_id);
             message.room_id = room_id;
             if (page.value > 1) recordScrollPosition();
             try {
@@ -273,7 +272,6 @@ export default {
                         },
                     }
                 );
-                console.log("res", response.data.data);
                 if (room_id != roomId) {
                     page.value = 1;
                     messages.value = reverse(response.data.data);
