@@ -260,7 +260,8 @@ export default {
         };
 
         async function showMessageList(room_id) {
-            roomId.value = room_id;
+            console.log("roomId", roomId.value);
+            console.log("room_id", room_id);
             message.room_id = room_id;
             if (page.value > 1) recordScrollPosition();
             try {
@@ -272,16 +273,23 @@ export default {
                         },
                     }
                 );
-                console.log("response", response.data.data);
-                messages.value = [
-                    ...reverse(response.data.data),
-                    ...messages.value,
-                ];
+                console.log("res", response.data.data);
+                if (room_id != roomId) {
+                    page.value = 1;
+                    messages.value = reverse(response.data.data);
+                } else {
+                    page.value += 1;
+                    messages.value = [
+                        ...reverse(response.data.data),
+                        ...messages.value,
+                    ];
+                }
+
                 toggleShowMessages();
+                roomId.value = room_id;
                 await nextTick();
                 if (page.value == 1) scrollToBottom();
                 else restoreScrollPosition();
-                page.value += 1;
             } catch (error) {
                 console.error("Error fetching employees:", error);
             }
