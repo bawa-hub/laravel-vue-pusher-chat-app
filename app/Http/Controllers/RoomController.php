@@ -26,7 +26,7 @@ class RoomController extends Controller
 
     public function messages($roomId, Request $request)
     {
-
+        logger("room", [$roomId]);
         $page = $request->input('page', 1);
         $limit = $request->input('limit', 20);
 
@@ -48,11 +48,19 @@ class RoomController extends Controller
 
     public function storeMessage(Request $request)
     {
-        logger("sdf", [$request->all()]);
+        logger("files", [$request->hasFile('file')]);
+
+        $filePath = null;
+        if ($request->hasFile('file')) {
+            logger("has fiue");
+            $filePath = $request->file('file')->store('chat_files', 'public');
+        }
+
         $message = Message::create([
             'user_id' => Auth::user()->id,
-            'room_id' => $request->room_id,
-            'content' => $request->content
+            'room_id' => $request->input('room_id'),
+            'content' => $request->input('content'),
+            'file_path' => $filePath
         ]);
 
         broadcast(new MessageSent($message))->toOthers();

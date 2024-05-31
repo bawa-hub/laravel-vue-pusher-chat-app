@@ -109,6 +109,13 @@
                             "
                         >
                             {{ message.content }}
+                            <div v-if="message.file_path">
+                                <a
+                                    :href="getFileUrl(message.file_path)"
+                                    target="_blank"
+                                    >Download File</a
+                                >
+                            </div>
                             <span
                                 style="
                                     color: gray;
@@ -134,7 +141,20 @@
                             placeholder="Type a message"
                             v-model="message.content"
                         />
+                        <input
+                            type="file"
+                            @change="handleFileUpload"
+                            ref="fileInput"
+                            style="display: none"
+                        />
                         <div class="input-group-append">
+                            <button
+                                class="btn btn-primary"
+                                type="button"
+                                @click="triggerFileInput"
+                            >
+                                Attach File
+                            </button>
                             <button class="btn btn-primary" type="submit">
                                 Send
                             </button>
@@ -159,12 +179,14 @@ export default {
         let message = reactive({
             content: "",
             room_id: "",
+            file: null,
         });
         const room = ref("");
         let showRoomForm = ref(false);
         let showMessages = ref(false);
         let page = ref(1);
         let previousScrollHeightMinusScrollTop = ref(null);
+        const fileInput = ref(null);
 
         const fetchRooms = async () => {
             try {
@@ -175,7 +197,7 @@ export default {
                 });
                 rooms.value = response.data.data;
             } catch (error) {
-                console.error("Error fetching employees:", error);
+                console.error("Error fetching rooms:", error);
             }
         };
 
@@ -200,8 +222,19 @@ export default {
         };
 
         const sendMessage = async () => {
+            const formData = new FormData();
+            formData.append("content", message.content);
+            formData.append("room_id", message.room_id);
+            if (message.file) {
+                console.log("mesa.file", message.file);
+                formData.append("file", message.file);
+            }
             try {
-                const response = await axios.post("/api/messages", message);
+                const response = await axios.post("/api/messages", formData, {
+                    headers: {
+                        "Content-Type": "multipart/form-data",
+                    },
+                });
                 if (response.data.success) {
                     messages.value = [...messages.value, response.data.data];
                     scrollToBottom();
@@ -211,6 +244,19 @@ export default {
             }
             showRoomForm.value = false;
             message.content = "";
+            message.file = null;
+        };
+
+        const handleFileUpload = (event) => {
+            message.file = event.target.files[0];
+        };
+
+        const triggerFileInput = () => {
+            fileInput.value.click();
+        };
+
+        const getFileUrl = (filePath) => {
+            return `/storage/${filePath}`;
         };
 
         async function showMessageList(room_id) {
@@ -312,6 +358,10 @@ export default {
             sendMessage,
             handleScroll,
             fetchTime,
+            handleFileUpload,
+            triggerFileInput,
+            getFileUrl,
+            fileInput,
         };
     },
 };
