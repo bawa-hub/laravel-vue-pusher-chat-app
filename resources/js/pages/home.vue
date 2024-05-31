@@ -1,6 +1,8 @@
 <template>
     <div class="container">
         <div class="row">
+
+            <!-- list of rooms -->
             <div class="col-md-3 bg-light sidebar" v-if="showRoomForm == false">
                 <div
                     style="
@@ -29,6 +31,7 @@
                 </ul>
             </div>
 
+            <!-- add room -->
             <div class="col-md-3 bg-light sidebar" v-if="showRoomForm == true">
                 <form @submit.prevent="addRoom">
                     <div class="form-group">
@@ -44,6 +47,7 @@
                 </form>
             </div>
 
+            <!-- no room selected -->
             <div
                 class="col-md-9"
                 style="
@@ -56,27 +60,32 @@
                 <h2>Join a chat room</h2>
             </div>
 
+            <!-- message container  -->
             <div
                 class="col-md-9"
-                style="position: relative; height: 70vh"
+                style="display:flex;justify-content: space-between;flex-direction: column; height: 70vh;"
                 v-if="showMessages == true"
             >
-                <div class="chat-container p-3 bg-white">
+                <div class="chat-container p-3 bg-white" 
+                    style="height: 60vh;overflow-y: scroll;padding-bottom: 10px;"
+                    @scroll="handleScroll">
                     <div
                         class="chat-message"
                         v-for="message in messages"
                         :key="message.id"
+                        style="padding-bottom: 4px"
                     >
                         <span style="font-size: 12px; margin-right: 12px">{{
                             message.user.name
                         }}</span>
                         {{ message.content }}
                     </div>
+                    <div style="height: 2vh;"></div>
                 </div>
                 <form
                     @submit.prevent="sendMessage"
                     class="mt-3"
-                    style="position: absolute; left: 0; bottom: 0; right: 0"
+                    style="height: 10vh;"
                 >
                     <div class="input-group">
                         <input
@@ -93,12 +102,15 @@
                     </div>
                 </form>
             </div>
+            
         </div>
     </div>
 </template>
 
 <script>
-import { ref, onMounted, reactive } from "vue";
+import { ref, onMounted, reactive, nextTick } from "vue";
+import store from "../store";
+import { reverse } from "lodash";
 
 export default {
     setup() {
@@ -112,10 +124,16 @@ export default {
         const room = ref("");
         let showRoomForm = ref(false);
         let showMessages = ref(false);
+        let page = ref(1)
+        let previousScrollHeightMinusScrollTop = ref(null)
 
         const fetchRooms = async () => {
             try {
-                const response = await axios.get("/api/rooms");
+                const response = await axios.get("/api/rooms", {
+                    headers: {
+                      'Authorization': `Bearer ${store.getters.getToken}`
+                    }
+                });
                 rooms.value = response.data.data;
             } catch (error) {
                 console.error("Error fetching employees:", error);
@@ -147,6 +165,7 @@ export default {
                 const response = await axios.post("/api/messages", message);
                 if (response.data.success) {
                     messages.value = [...messages.value, response.data.data];
+                     scrollToBottom()
                 }
             } catch (error) {
                 console.error("Error fetching employees:", error);
@@ -155,16 +174,52 @@ export default {
             message.content = "";
         };
 
+        
         async function showMessageList(room_id) {
+            roomId.value = room_id
             message.room_id = room_id;
+            if(page.value > 1) recordScrollPosition()
             try {
-                const response = await axios.get(`/api/messages/${room_id}`);
-                messages.value = response.data.data;
+                const response = await axios.get(`/api/messages/${room_id}?page=${page.value}`, {
+                    headers: {
+                      'Authorization': `Bearer ${store.getters.getToken}`
+                    }
+                });
+                console.log("response", response.data.data)
+                messages.value = [...reverse(response.data.data),...messages.value];
                 toggleShowMessages();
+                await nextTick();
+                if(page.value == 1) scrollToBottom();
+                else restoreScrollPosition()
+               page.value += 1;
             } catch (error) {
                 console.error("Error fetching employees:", error);
             }
         }
+
+        function recordScrollPosition() {
+          let node = document.querySelector('.chat-container');
+          previousScrollHeightMinusScrollTop.value =
+          node.scrollHeight - node.scrollTop;
+    }
+
+    function restoreScrollPosition() {
+      let node = document.querySelector('.chat-container');
+      node.scrollTop =
+        node.scrollHeight - previousScrollHeightMinusScrollTop.value;
+    }
+
+        const handleScroll = async () => {
+            const chatContainer = document.querySelector('.chat-container');
+            if (chatContainer.scrollTop === 0 ) {
+                await showMessageList(roomId.value);
+            }
+        };
+
+        const scrollToBottom = () => {
+               const chatContainer = document.querySelector('.chat-container');
+              if(chatContainer)  chatContainer.scrollTop = chatContainer.scrollHeight;
+        };
 
         onMounted(() => {
             fetchRooms();
@@ -184,6 +239,7 @@ export default {
             messages,
             message,
             sendMessage,
+            handleScroll
         };
     },
 };

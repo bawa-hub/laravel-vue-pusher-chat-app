@@ -24,11 +24,26 @@ class RoomController extends Controller
         return response()->json(['success' => true], 201);
     }
 
-    public function messages($roomId)
+    public function messages($roomId, Request $request)
     {
-        $messages = Message::where('room_id', $roomId)->with('user:name,id')->orderBy('created_at')->get();
 
-        return response()->json(['success' => true, 'data' => $messages], 200);
+        $page = $request->input('page', 1);
+        $limit = $request->input('limit', 20);
+
+        $messages = Message::where('room_id', $roomId)
+            ->with('user:name,id')
+            ->orderBy('created_at', 'desc')
+            ->paginate($limit, ['*'], 'page', $page);
+
+        // return response()->json([
+        //     'success' => true,
+        //     'data' => $messages->items(), // Get the messages for the current page
+        //     'current_page' => $messages->currentPage(),
+        //     'last_page' => $messages->lastPage(),
+        //     'total' => $messages->total(),
+        // ], 200);
+
+        return response()->json(['success' => true, 'data' => $messages->items()], 200);
     }
 
     public function storeMessage(Request $request)
