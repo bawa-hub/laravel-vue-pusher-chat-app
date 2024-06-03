@@ -262,7 +262,26 @@ export default {
 
         async function showMessageList(room_id) {
             message.room_id = room_id;
-            if (page.value > 1) recordScrollPosition();
+            roomId.value = room_id;
+            try {
+                const response = await axios.get(`/api/messages/${room_id}`, {
+                    headers: {
+                        Authorization: `Bearer ${store.getters.getToken}`,
+                    },
+                });
+                messages.value = reverse(response.data.data);
+                toggleShowMessages();
+                await nextTick();
+                scrollToBottom();
+                page.value = 2;
+            } catch (error) {
+                console.error("Error fetching employees:", error);
+            }
+        }
+
+        async function fetchNewMessage(room_id) {
+            message.room_id = room_id;
+            recordScrollPosition();
             try {
                 const response = await axios.get(
                     `/api/messages/${room_id}?page=${page.value}`,
@@ -272,22 +291,17 @@ export default {
                         },
                     }
                 );
-                if (room_id != roomId) {
-                    page.value = 1;
-                    messages.value = reverse(response.data.data);
-                } else {
-                    page.value += 1;
-                    messages.value = [
-                        ...reverse(response.data.data),
-                        ...messages.value,
-                    ];
-                }
+
+                messages.value = [
+                    ...reverse(response.data.data),
+                    ...messages.value,
+                ];
+                page.value += 1;
 
                 toggleShowMessages();
                 roomId.value = room_id;
                 await nextTick();
-                if (page.value == 1) scrollToBottom();
-                else restoreScrollPosition();
+                restoreScrollPosition();
             } catch (error) {
                 console.error("Error fetching employees:", error);
             }
@@ -308,7 +322,7 @@ export default {
         const handleScroll = async () => {
             const chatContainer = document.querySelector(".chat-container");
             if (chatContainer.scrollTop === 0) {
-                await showMessageList(roomId.value);
+                await fetchNewMessage(roomId.value);
             }
         };
 

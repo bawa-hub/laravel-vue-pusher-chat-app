@@ -18,15 +18,16 @@ class MessageSeeder extends Seeder
     {
         // Message::factory()->count(500)->create();
 
-        $i = 101;
+        $i = 1;
         $date = Carbon::parse('2024-04-31 04:48:24');
-        while ($i < 10001) {
+        while ($i < 101) {
             $date->addMinute($i);
             Message::create([
                 'room_id' => 3,
                 'user_id' => 1,
-                'content' => "test$i",
-                'created_at' => $date
+                'content' => "page editors now use Lorem Ipsum as their default model text, and a search for 'lorem i $i",
+                'created_at' => $date,
+                'file_path' => null
             ]);
             $i++;
         }
