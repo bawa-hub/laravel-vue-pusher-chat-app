@@ -48,7 +48,7 @@
 
             <!-- no room selected -->
             <div
-                class="col-md-9"
+                class="col-md-6"
                 style="
                     display: flex;
                     justify-content: center;
@@ -61,7 +61,7 @@
 
             <!-- message container  -->
             <div
-                class="col-md-9"
+                class="col-md-6"
                 style="
                     display: flex;
                     justify-content: space-between;
@@ -70,6 +70,14 @@
                 "
                 v-if="showMessages == true"
             >
+                <div style="margin-bottom: 10px">
+                    <input
+                        type="text"
+                        placeholder="Search message"
+                        v-model="searchQuery"
+                        @change="searchMessage"
+                    />
+                </div>
                 <div
                     class="chat-container p-3 bg-white"
                     style="
@@ -99,6 +107,7 @@
                         >
                             {{ message.user.name.charAt(0) }}
                         </div>
+
                         <div
                             style="
                                 background-color: #d9fdd3;
@@ -127,6 +136,7 @@
                             >
                         </div>
                     </div>
+
                     <div style="height: 2vh"></div>
                 </div>
                 <form
@@ -140,6 +150,7 @@
                             class="form-control"
                             placeholder="Type a message"
                             v-model="message.content"
+                            @input="showTyping"
                         />
                         <input
                             type="file"
@@ -163,6 +174,33 @@
                     </div>
                 </form>
             </div>
+
+            <!-- list of online users -->
+            <div class="col-md-3 bg-light sidebar" v-if="showMessages == true">
+                <div
+                    style="
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                    "
+                >
+                    <h5 class="mt-3">Online Users</h5>
+                </div>
+                <ul class="list-group">
+                    <li
+                        class="list-group-item"
+                        v-for="user in onlineUsers"
+                        :key="user.id"
+                    >
+                        {{ user.name }}
+                        <span
+                            style="font-size: 8px"
+                            v-if="user.isTyping == true"
+                            >typing...</span
+                        >
+                    </li>
+                </ul>
+            </div>
         </div>
     </div>
 </template>
@@ -176,6 +214,7 @@ export default {
     setup() {
         const rooms = ref([]);
         const messages = ref([]);
+        const onlineUsers = ref([]);
         let roomId = ref(0);
         let message = reactive({
             content: "",
@@ -188,6 +227,7 @@ export default {
         let page = ref(1);
         let previousScrollHeightMinusScrollTop = ref(null);
         const fileInput = ref(null);
+        const searchQuery = ref("");
 
         const fetchRooms = async () => {
             try {
@@ -197,6 +237,19 @@ export default {
                     },
                 });
                 rooms.value = response.data.data;
+            } catch (error) {
+                console.error("Error fetching rooms:", error);
+            }
+        };
+
+        const fetchOnlineUsers = async () => {
+            try {
+                const response = await axios.get("/api/users/online", {
+                    headers: {
+                        Authorization: `Bearer ${store.getters.getToken}`,
+                    },
+                });
+                onlineUsers.value = response.data.data;
             } catch (error) {
                 console.error("Error fetching rooms:", error);
             }
@@ -223,6 +276,7 @@ export default {
         };
 
         const sendMessage = async () => {
+            showTypingEnd();
             const formData = new FormData();
             formData.append("content", message.content);
             formData.append("room_id", message.room_id);
@@ -233,6 +287,7 @@ export default {
             try {
                 const response = await axios.post("/api/messages", formData, {
                     headers: {
+                        Authorization: `Bearer ${store.getters.getToken}`,
                         "Content-Type": "multipart/form-data",
                     },
                 });
@@ -280,6 +335,7 @@ export default {
         }
 
         async function fetchNewMessage(room_id) {
+            if (searchQuery.value) return;
             message.room_id = room_id;
             recordScrollPosition();
             try {
@@ -332,13 +388,6 @@ export default {
                 chatContainer.scrollTop = chatContainer.scrollHeight;
         };
 
-        onMounted(() => {
-            fetchRooms();
-            window.Echo.channel("chat-room").listen("MessageSent", (event) => {
-                messages.value = [...messages.value, event.message];
-            });
-        });
-
         const fetchTime = (date) => {
             const isoString = date;
             const dateObject = new Date(isoString);
@@ -365,6 +414,96 @@ export default {
             return formattedTime;
         };
 
+        const searchMessage = async () => {
+            if (!searchQuery.value) {
+                messages.value = [];
+                return;
+            }
+
+            try {
+                const response = await axios.get("/api/search/messages", {
+                    params: {
+                        query: searchQuery.value,
+                        room_id: roomId.value,
+                    },
+                    headers: {
+                        Authorization: `Bearer ${store.getters.getToken}`,
+                    },
+                });
+
+                if (response.data.success) {
+                    messages.value = response.data.data;
+                    console.log("messages", messages.value);
+                } else {
+                    console.error("Search failed:", response.data.message);
+                }
+            } catch (error) {
+                console.error("Error searching messages:", error);
+            }
+        };
+
+        const showTyping = async () => {
+            console.log("typoing");
+            try {
+                await axios.get("/api/users/typing", {
+                    headers: {
+                        Authorization: `Bearer ${store.getters.getToken}`,
+                    },
+                });
+            } catch (error) {
+                console.error("Error fetching rooms:", error);
+            }
+        };
+
+        const showTypingEnd = async () => {
+            console.log("typoingEnd");
+            try {
+                await axios.get("/api/users/endtyping", {
+                    headers: {
+                        Authorization: `Bearer ${store.getters.getToken}`,
+                    },
+                });
+            } catch (error) {
+                console.error("Error fetching rooms:", error);
+            }
+        };
+
+        onMounted(() => {
+            fetchRooms();
+            fetchOnlineUsers();
+            window.Echo.channel("chat-room").listen("MessageSent", (event) => {
+                messages.value = [...messages.value, event.message];
+            });
+
+            window.Echo.channel("online-user").listen("OnlineUser", (event) => {
+                onlineUsers.value = [...onlineUsers.value, event.message];
+                console.log("online-user", onlineUsers.value);
+            });
+
+            window.Echo.channel("user-typing").listen("UserTyping", (event) => {
+                console.log("usertyping event catch");
+                onlineUsers.value = onlineUsers.value.map((user) =>
+                    user.id == event.message.id
+                        ? { ...user, isTyping: true }
+                        : user
+                );
+                console.log("users", onlineUsers.value);
+            });
+
+            window.Echo.channel("user-end-typing").listen(
+                "UserEndTyping",
+                (event) => {
+                    console.log("userEndtyping event catch");
+                    onlineUsers.value = onlineUsers.value.map((user) =>
+                        user.id == event.message.id
+                            ? { ...user, isTyping: false }
+                            : user
+                    );
+                    console.log("users", onlineUsers.value);
+                }
+            );
+        });
+
         return {
             rooms,
             showRoomForm,
@@ -382,6 +521,10 @@ export default {
             triggerFileInput,
             getFileUrl,
             fileInput,
+            searchMessage,
+            searchQuery,
+            onlineUsers,
+            showTyping,
         };
     },
 };

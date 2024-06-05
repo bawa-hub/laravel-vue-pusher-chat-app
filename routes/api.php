@@ -24,6 +24,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/rooms', [RoomController::class, 'store']);
     Route::post('/messages', [RoomController::class, 'storeMessage']);
     Route::get('/messages/{roomId}', [RoomController::class, 'messages']);
+    Route::get('/search/messages', [RoomController::class, 'searchMessage']);
+    Route::get('/users/online', [RoomController::class, 'onlineUsers']);
+    Route::get('/users/typing', [RoomController::class, 'userTyping']);
+    Route::get('/users/endtyping', [RoomController::class, 'userEndTyping']);
 });
 
 Route::controller(AuthController::class)->group(function () {

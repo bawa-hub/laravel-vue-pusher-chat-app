@@ -18,5 +18,17 @@ Broadcast::channel('App.Models.User.{id}', function ($user, $id) {
 });
 
 Broadcast::channel('chat-room', function ($user, $roomId) {
-    return true; // Assuming all authenticated users can join any chat room
+    return true;
+});
+
+Broadcast::channel('online-user', function ($user, $roomId) {
+    return true;
+});
+
+Broadcast::channel('user-typing', function ($user, $roomId) {
+    return true;
+});
+
+Broadcast::channel('user-end-typing', function ($user, $roomId) {
+    return true;
 });

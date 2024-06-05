@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\OnlineUser;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -28,6 +29,8 @@ class AuthController extends Controller
 
         $response = ['success' => true, 'data' => $success, 'message' => 'User registered successfully'];
 
+        broadcast(new OnlineUser($user))->toOthers();
+
         return response()->json($response, 200);
     }
 
@@ -47,6 +50,11 @@ class AuthController extends Controller
         $success['name'] = $user->name;
 
         $response = ['success' => true, 'data' => $success, 'message' => 'User logged in successfully'];
+
+        $user->is_online = true;
+        $user->save();
+
+        broadcast(new OnlineUser($user))->toOthers();
 
         return response()->json($response, 200);
     }
