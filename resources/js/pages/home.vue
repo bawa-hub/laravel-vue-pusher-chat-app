@@ -206,7 +206,7 @@
 </template>
 
 <script>
-import { ref, onMounted, reactive, nextTick } from "vue";
+import { ref, onMounted, reactive, nextTick, onUnmounted } from "vue";
 import store from "../store";
 import { reverse } from "lodash";
 
@@ -229,6 +229,8 @@ export default {
         const fileInput = ref(null);
         const searchQuery = ref("");
         let previousSentHeartBeat = ref(null);
+        const isTabActive = ref(true);
+        let intervalId;
 
         const fetchRooms = async () => {
             try {
@@ -471,7 +473,7 @@ export default {
 
         const sendHeartBeat = async () => {
             console.log("sendheartbeat", timeDiff());
-            if (timeDiff() < 5) return; // Correctly call the function
+            if (timeDiff() < 5 || !isTabActive.value) return;
 
             try {
                 const response = await axios.get("/api/users/heartbeat", {
@@ -484,6 +486,10 @@ export default {
             } catch (error) {
                 console.error("Error sending heartbeat:", error);
             }
+        };
+
+        const handleVisibilityChange = () => {
+            isTabActive.value = !document.hidden;
         };
 
         const timeDiff = () => {
@@ -505,10 +511,14 @@ export default {
             fetchRooms();
             fetchOnlineUsers();
 
-            setInterval(() => {
+            intervalId = setInterval(() => {
                 fetchOnlineUsers();
             }, 7000);
 
+            document.addEventListener(
+                "visibilitychange",
+                handleVisibilityChange
+            );
             window.addEventListener("mousemove", sendHeartBeat);
             window.addEventListener("click", sendHeartBeat);
             window.addEventListener("keypress", sendHeartBeat);
@@ -544,6 +554,14 @@ export default {
                     console.log("users", onlineUsers.value);
                 }
             );
+        });
+
+        onUnmounted(() => {
+            document.removeEventListener(
+                "visibilitychange",
+                handleVisibilityChange
+            );
+            clearInterval(intervalId);
         });
 
         return {
