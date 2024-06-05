@@ -228,6 +228,7 @@ export default {
         let previousScrollHeightMinusScrollTop = ref(null);
         const fileInput = ref(null);
         const searchQuery = ref("");
+        let previousSentHeartBeat = ref(null);
 
         const fetchRooms = async () => {
             try {
@@ -468,9 +469,50 @@ export default {
             }
         };
 
+        const sendHeartBeat = async () => {
+            console.log("sendheartbeat", timeDiff());
+            if (timeDiff() < 5) return; // Correctly call the function
+
+            try {
+                const response = await axios.get("/api/users/heartbeat", {
+                    headers: {
+                        Authorization: `Bearer ${store.getters.getToken}`,
+                    },
+                });
+
+                previousSentHeartBeat.value = new Date();
+            } catch (error) {
+                console.error("Error sending heartbeat:", error);
+            }
+        };
+
+        const timeDiff = () => {
+            if (previousSentHeartBeat.value == null) return 1000;
+
+            const datetime1 = previousSentHeartBeat.value;
+            const datetime2 = new Date();
+
+            // Calculate the difference in milliseconds
+            const diffInMilliseconds = datetime2 - datetime1;
+
+            // Convert milliseconds to seconds
+            const diffInSeconds = diffInMilliseconds / 1000;
+
+            return diffInSeconds;
+        };
+
         onMounted(() => {
             fetchRooms();
             fetchOnlineUsers();
+
+            setInterval(() => {
+                fetchOnlineUsers();
+            }, 7000);
+
+            window.addEventListener("mousemove", sendHeartBeat);
+            window.addEventListener("click", sendHeartBeat);
+            window.addEventListener("keypress", sendHeartBeat);
+
             window.Echo.channel("chat-room").listen("MessageSent", (event) => {
                 messages.value = [...messages.value, event.message];
             });

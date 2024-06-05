@@ -29,6 +29,10 @@ class AuthController extends Controller
 
         $response = ['success' => true, 'data' => $success, 'message' => 'User registered successfully'];
 
+        $user->is_online = true;
+        $user->last_activity_at = now();
+        $user->save();
+
         broadcast(new OnlineUser($user))->toOthers();
 
         return response()->json($response, 200);
@@ -52,6 +56,7 @@ class AuthController extends Controller
         $response = ['success' => true, 'data' => $success, 'message' => 'User logged in successfully'];
 
         $user->is_online = true;
+        $user->last_activity_at = now();
         $user->save();
 
         broadcast(new OnlineUser($user))->toOthers();

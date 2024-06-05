@@ -8,6 +8,7 @@ use App\Events\UserTyping;
 use App\Models\Message;
 use App\Models\Room;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -22,7 +23,7 @@ class RoomController extends Controller
 
     public function onlineUsers()
     {
-        $users = User::where('is_online', true)->get();
+        $users = User::where('last_activity_at', '>', now()->subSecond(5))->get();
 
         return response()->json(['success' => true, 'data' => $users], 200);
     }
@@ -110,5 +111,21 @@ class RoomController extends Controller
         broadcast(new UserEndTyping($user))->toOthers();
 
         return response()->json(['success' => true], 200);
+    }
+
+    public function timeDifference($date1, $date2)
+    {
+        $date1 = Carbon::createFromFormat('Y-m-d H:i:s', $date1);
+        $date2 = Carbon::createFromFormat('Y-m-d H:i:s', $date2);
+        $diffInSeconds = $date1->diffInSeconds($date2);
+
+        return $diffInSeconds;
+    }
+
+    public function heartbeat()
+    {
+        $user = Auth::user();
+        $user->last_activity_at = now();
+        $user->save();
     }
 }
